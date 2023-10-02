@@ -1,3 +1,45 @@
+<?php
+// Richiamo le credenziali dal file config.php
+require_once __DIR__ . '/config.php';
+
+// Setto messaggio vuoto di default
+$msg = "";
+
+if (isset($_POST['bottone_accedi'])) {
+
+    // Salvo nella variabili ciò che ricevo dal form
+    $email = mysqli_real_escape_string($connect, $_POST['email']);
+    $password = mysqli_real_escape_string($connect, md5($_POST['password']));
+
+    // Verifico se l'email è registrata nel database
+    $sql_email = "SELECT count(*) AS email FROM utenti WHERE email='" . $email . "'";
+    $result_email = mysqli_query($connect, $sql_email);
+    $row_email = mysqli_fetch_array($result_email);
+
+    $count_email = $row_email['email'];
+
+    if ($count_email > 0) { // Se l'email è registrata
+
+        // Verifico che anche la password è corretta
+        $sql_psw = "SELECT count(*) AS count FROM utenti WHERE email='" . $email . "' AND password='" . $password . "'";
+        $result_psw = mysqli_query($connect, $sql_psw);
+        $row_psw = mysqli_fetch_array($result_psw);
+        $count_psw = $row_psw['count'];
+
+        if ($count_psw > 0) {  // Se la password è corretta, accedo
+            $_SESSION['email'] = $email;
+            header('Location: events.php');
+        } else {  // ALTRIMENTI (se non è corretta)
+            $msg = "<div class='msg-error'>La password inserita è errata</div>";
+        }
+    } else { // Se l'eamil non è registrata (l'utente non esiste nel db)
+        $msg = "<div class='msg-error'>Nessun utente trovato per questo indirizzo e-mail</div>";
+    }
+}
+?>
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,9 +47,11 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Importo font da Google Font (DM Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100;0,9..40,200;0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;0,9..40,1000;1,9..40,100;1,9..40,200;1,9..40,300;1,9..40,400;1,9..40,500;1,9..40,600;1,9..40,700;1,9..40,800;1,9..40,900;1,9..40,1000&display=swap" rel="stylesheet">
+    <!-- Importo font awesome per icona occhio-password -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
     <title>Edusogno</title>
 </head>
@@ -20,7 +64,11 @@
     <main>
         <h1 class="text-center titolo">Hai già un account?</h1>
         <div class="container">
-            <form id="login-form" method="POST" action="">
+
+            <!-- Stampo messaggio riuscita/errore -->
+            <?php echo $msg; ?>
+
+            <form id="login-form" method="POST">
                 <h5><label for="email">Inserisci l'e-mail</label></h5>
                 <div><input type="email" name="email" class="form-control @error('email') is-invalid @enderror" id="user-email" placeholder="name@example.com">
                     <span id="email-error" class="invalid-feedback" role="alert"><strong></strong></span>
@@ -32,7 +80,7 @@
                     <span id="password-error" class="invalid-feedback" role="alert"><strong></strong></span>
                 </div>
 
-                <button type="button" id="accedi">ACCEDI</button>
+                <button type="sumbit" id="accedi" name="bottone_accedi">ACCEDI</button>
             </form>
 
             <h4 class="text-center">Non hai ancora un profilo? <a href="create-account.php"><span>Registrati</span></a></h4>
@@ -41,6 +89,7 @@
 </body>
 
 <script>
+    // Funzione per rendere visibile/invisibile password al click su occhio
     const passwordInput = document.getElementById("user-password")
     const eye = document.getElementById("eye")
 
@@ -50,6 +99,7 @@
         passwordInput.setAttribute("type", type)
     })
 
+    // Funzione di validazione dei dati del form
     document.addEventListener("DOMContentLoaded", function() {
         const loginForm = document.getElementById("login-form");
         const submitButton = document.getElementById("accedi");
@@ -59,19 +109,22 @@
 
         submitButton.addEventListener("click", function() {
             if (validateForm()) {
-                loginForm.submit();
+                registerForm.submit();
+            } else {
+                event.preventDefault(); // Tolgo comportamento base del bottone (evito ricarica pagina)
             }
         });
 
         function validateForm() {
             let isValid = true;
 
+            // per E-MAIL
             const emailValue = emailField.value.trim();
             if (emailValue === "") {
                 isValid = false;
                 document.getElementById("email-error").innerHTML = "L'email è obbligatoria.";
                 emailField.classList.add("is-invalid");
-            } else if (!isValidEmail(emailValue)) {
+            } else if (!isValidEmail(emailValue)) { // Controllo se email è nel formato corretto
                 isValid = false;
                 document.getElementById("email-error").innerHTML = "Inserisci un indirizzo email valido.";
                 emailField.classList.add("is-invalid");
@@ -80,6 +133,7 @@
                 emailField.classList.remove("is-invalid");
             }
 
+            // per PASSWORD
             const passwordValue = passwordField.value.trim();
             if (passwordValue === "") {
                 isValid = false;
@@ -93,6 +147,7 @@
             return isValid;
         }
 
+        // Controllo formato email
         function isValidEmail(email) {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return emailRegex.test(email);
@@ -101,6 +156,14 @@
 </script>
 
 <style>
+    .msg-error {
+        padding: 2.5rem 2rem 0 2rem;
+        font-weight: bold;
+        font-size: 1.6rem;
+        line-height: 1.5;
+        color: red;
+    }
+
     body {
         margin: 0;
         padding: 0;
