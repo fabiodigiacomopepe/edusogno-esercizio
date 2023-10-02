@@ -18,10 +18,20 @@
     </header>
 
     <main>
-        <h1 class="text-center titolo">Hai già un account?</h1>
+        <h1 class="text-center titolo">Crea il tuo account</h1>
         <div class="container">
-            <form id="login-form" method="POST" action="">
-                <h5><label for="email">Inserisci l'e-mail</label></h5>
+            <form id="register-form" method="POST" action="">
+                <h5><label for="name">Inserisci il nome</label></h5>
+                <div><input type="text" name="name" class="form-control @error('name') is-invalid @enderror" id="user-name" placeholder="Mario">
+                    <span id="name-error" class="invalid-feedback" role="alert"><strong></strong></span>
+                </div>
+
+                <h5><label for="surname">Inserisci il cognome</label></h5>
+                <div><input type="text" name="surname" class="form-control @error('surname') is-invalid @enderror" id="user-surname" placeholder="Rossi">
+                    <span id="surname-error" class="invalid-feedback" role="alert"><strong></strong></span>
+                </div>
+
+                <h5><label for="email">Inserisci l'email</label></h5>
                 <div><input type="email" name="email" class="form-control @error('email') is-invalid @enderror" id="user-email" placeholder="name@example.com">
                     <span id="email-error" class="invalid-feedback" role="alert"><strong></strong></span>
                 </div>
@@ -32,10 +42,10 @@
                     <span id="password-error" class="invalid-feedback" role="alert"><strong></strong></span>
                 </div>
 
-                <button type="button" id="accedi">ACCEDI</button>
+                <button type="button" id="registrati">REGISTRATI</button>
             </form>
 
-            <h4 class="text-center">Non hai ancora un profilo? <a href="create-account.php"><span>Registrati</span></a></h4>
+            <h4 class="text-center">Hai già un account? <a href="index.php"><span>Accedi</span></a></h4>
         </div>
     </main>
 </body>
@@ -51,20 +61,42 @@
     })
 
     document.addEventListener("DOMContentLoaded", function() {
-        const loginForm = document.getElementById("login-form");
-        const submitButton = document.getElementById("accedi");
+        const registerForm = document.getElementById("register-form");
+        const submitButton = document.getElementById("registrati");
+        const nameField = document.getElementById("user-name");
+        const surnameField = document.getElementById("user-surname");
         const emailField = document.getElementById("user-email");
         const passwordField = document.getElementById("user-password");
 
 
         submitButton.addEventListener("click", function() {
             if (validateForm()) {
-                loginForm.submit();
+                registerForm.submit();
             }
         });
 
         function validateForm() {
             let isValid = true;
+
+            const nameValue = nameField.value.trim();
+            if (nameValue === "") {
+                isValid = false;
+                document.getElementById("name-error").innerHTML = "Il nome è obbligatorio.";
+                nameField.classList.add("is-invalid");
+            } else {
+                document.getElementById("name-error").innerHTML = "";
+                nameField.classList.remove("is-invalid");
+            }
+
+            const surnameValue = surnameField.value.trim();
+            if (surnameValue === "") {
+                isValid = false;
+                document.getElementById("surname-error").innerHTML = "Il cognome è obbligatorio.";
+                surnameField.classList.add("is-invalid");
+            } else {
+                document.getElementById("surname-error").innerHTML = "";
+                surnameField.classList.remove("is-invalid");
+            }
 
             const emailValue = emailField.value.trim();
             if (emailValue === "") {
@@ -83,7 +115,8 @@
             const passwordValue = passwordField.value.trim();
             if (passwordValue === "") {
                 isValid = false;
-                document.getElementById("password-error").innerHTML = "La password è obbligatoria.";
+                document.getElementById("password-error").innerHTML =
+                    "La password è obbligatoria.";
                 passwordField.classList.add("is-invalid");
             } else {
                 document.getElementById("password-error").innerHTML = "";
@@ -185,7 +218,7 @@
         color: blue;
     }
 
-    #accedi {
+    #registrati {
         cursor: pointer;
         width: 100%;
         margin-top: 2rem;
@@ -200,10 +233,10 @@
     h4 {
         margin-bottom: 3rem;
         font-weight: normal;
+        text-decoration: underline;
     }
 
     span {
-        text-decoration: underline;
         font-weight: bold;
         cursor: pointer;
         color: black;
