@@ -27,12 +27,13 @@ if (isset($_POST['bottone_accedi'])) {
         $count_psw = $row_psw['count'];
 
         if ($count_psw > 0) {  // Se la password è corretta, accedo
+            session_start();  // Avvio sessione per trasferire email dall'altra parte
             $_SESSION['email'] = $email;
             header('Location: events.php');
         } else {  // ALTRIMENTI (se non è corretta)
             $msg = "<div class='msg-error'>La password inserita è errata</div>";
         }
-    } else { // Se l'eamil non è registrata (l'utente non esiste nel db)
+    } else { // Se l'email non è registrata (l'utente non esiste nel db)
         $msg = "<div class='msg-error'>Nessun utente trovato per questo indirizzo e-mail</div>";
     }
 }
