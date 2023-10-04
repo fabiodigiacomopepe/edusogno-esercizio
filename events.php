@@ -2,6 +2,7 @@
 // Riapro sessione per ricevere email
 session_start();
 
+// Importo PHPMiler
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
@@ -20,17 +21,17 @@ if (!isset($_SESSION['email'])) {
     exit();
 }
 
-// Ottiengo l'email dell'utente dalla variabile di sessione
+// Ottengo l'email dell'utente dalla variabile di sessione
 $email = $_SESSION['email'];
 
-// Ottiengo il nome e il cognome dell'utente loggato dalla tabella "utenti"
+// Ottengo il nome e il cognome dell'utente loggato dalla tabella "utenti"
 $sql_user = "SELECT nome, cognome FROM utenti WHERE email = '$email'";
 $result_user = mysqli_query($connect, $sql_user);
 $row_user = mysqli_fetch_array($result_user);
 $nome = $row_user['nome'];
 $cognome = $row_user['cognome'];
 
-// Ottiengo gli eventi in cui l'utente è presente dalla tabella "eventi"
+// Ottengo gli eventi in cui l'utente è presente dalla tabella "eventi"
 $sql_eventi = "SELECT * FROM eventi WHERE attendees LIKE '%$email%'";
 $result_eventi = mysqli_query($connect, $sql_eventi);
 
@@ -43,35 +44,35 @@ while ($row_eventi = mysqli_fetch_array($result_eventi)) {
     $eventi[] = $evento; // Aggiungo l'oggetto "evento" all'array "eventi"
 }
 
-// Controlla se l'utente ha fatto clic sul pulsante "Password dimenticata"
+// Controllo se l'utente ha fatto clic sul pulsante per reimpostare la password
 if (isset($_POST['forgot_password'])) {
-    // Ottieni l'email fornita dall'utente
+    // Ottiengo l'email fornita dall'utente
     $email = $_POST['email'];
 
-    // Verifica se l'email esiste nel database
+    // Verifico se l'email esiste nel database
     $query = "SELECT * FROM utenti WHERE email = '$email'";
     $result = $connect->query($query);
 
     if ($result->num_rows > 0) {
-        // Genera un token univoco per il reset della password
+        // Genero un token univoco per il reset della password
         $token = bin2hex(random_bytes(32));
 
         // IMPORTANTE - PER CREARE COLONNA RESET_TOKEN LA PRIMA VOLTA !!!!!!!!!!!!!!!!!!!!!!!!!!!
         // $alter_query = "ALTER TABLE utenti ADD reset_token VARCHAR(255) DEFAULT NULL";
         // $connect->query($alter_query);
 
-        // Salva il token nel database per l'utente
+        // Salvo il token nel database per l'utente
         $query = "UPDATE utenti SET reset_token = '$token' WHERE email = '$email'";
         $connect->query($query);
 
-        // Invia un'email all'utente con il link per reimpostare la password
+        // Invio un'email all'utente con il link per reimpostare la password
         $reset_link = "http://localhost/edusogno-esercizio/reset-password.php?token=$token"; // Sostituisci con l'URL corretto
 
-        $mail = new PHPMailer(true); //se true vengono sollevate eventuali eccezioni utili per il debugging
+        $mail = new PHPMailer(true); //se true, vengono sollevate eventuali eccezioni utili per il debugging
 
         try {
             //Impostazioni server
-            $mail->SMTPDebug = SMTP::DEBUG_OFF; //Debug mode
+            $mail->SMTPDebug = SMTP::DEBUG_OFF; //Debug mode - OFF TOGLIE I LOG A SCHERMO
             $mail->isSMTP(); //Invio tramite SMTP
             $mail->Host = 'smtp.gmail.com'; //Server SMTP
             $mail->SMTPAuth = true; //Abilita autenticazione SMTP
