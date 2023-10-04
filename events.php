@@ -2,8 +2,17 @@
 // Riapro sessione per ricevere email
 session_start();
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+require './PHPMailer/src/Exception.php';
+require './PHPMailer/src/PHPMailer.php';
+require './PHPMailer/src/SMTP.php';
+
 // Richiamo le credenziali dal file config.php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/credential.php';
 
 // Verifico se l'utente è loggato
 if (!isset($_SESSION['email'])) {
@@ -33,6 +42,64 @@ while ($row_eventi = mysqli_fetch_array($result_eventi)) {
     $evento->data_evento = $row_eventi['data_evento'];
     $eventi[] = $evento; // Aggiungo l'oggetto "evento" all'array "eventi"
 }
+
+// Controlla se l'utente ha fatto clic sul pulsante "Password dimenticata"
+if (isset($_POST['forgot_password'])) {
+    // Ottieni l'email fornita dall'utente
+    $email = $_POST['email'];
+
+    // Verifica se l'email esiste nel database
+    $query = "SELECT * FROM utenti WHERE email = '$email'";
+    $result = $connect->query($query);
+
+    if ($result->num_rows > 0) {
+        // Genera un token univoco per il reset della password
+        $token = bin2hex(random_bytes(32));
+
+        // IMPORTANTE - PER CREARE COLONNA RESET_TOKEN LA PRIMA VOLTA !!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // $alter_query = "ALTER TABLE utenti ADD reset_token VARCHAR(255) DEFAULT NULL";
+        // $connect->query($alter_query);
+
+        // Salva il token nel database per l'utente
+        $query = "UPDATE utenti SET reset_token = '$token' WHERE email = '$email'";
+        $connect->query($query);
+
+        // Invia un'email all'utente con il link per reimpostare la password
+        $reset_link = "http://localhost/edusogno-esercizio/reset-password.php?token=$token"; // Sostituisci con l'URL corretto
+
+        $mail = new PHPMailer(true); //se true vengono sollevate eventuali eccezioni utili per il debugging
+
+        try {
+            //Impostazioni server
+            $mail->SMTPDebug = SMTP::DEBUG_OFF; //Debug mode
+            $mail->isSMTP(); //Invio tramite SMTP
+            $mail->Host = 'smtp.gmail.com'; //Server SMTP
+            $mail->SMTPAuth = true; //Abilita autenticazione SMTP
+            $mail->Username = $smtp_mail; //SMTP username
+            $mail->Password = $smtp_password; //SMTP password
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; //Abilita TLS implicito
+            $mail->Port = 587; //Porta SMTP
+
+            //Recipients
+            $mail->setFrom($smtp_mail, $smtp_name);
+            $mail->addAddress($email, $nome); //Indirizzo destinatario
+            $mail->addReplyTo($smtp_mail, $smtp_name); //Indirizzo di risposta
+
+            //Content
+            $mail->isHTML(true); //Abilita invio in HTML
+            $mail->Subject = 'Reimposta password'; //Oggetto
+            $mail->Body = "Ciao, per reimpostare la tua password clicca su questo link: $reset_link"; //Corpo email
+
+            $mail->send();
+            echo '<h2 class="email_status green">Una messaggio con le istruzioni per reimpostare la password è stato inviato alla tua email</h2>';
+        } catch (Exception $e) {
+            echo "<h2 class='email_status red'>Il messaggio non è stato inviato. Errore: {$mail->ErrorInfo}</h2>";
+        }
+    } else {
+        // L'email non esiste nel database
+        echo "<h2 class='email_status red'>L'email fornita non è valida.</h2>";
+    }
+}
 ?>
 
 
@@ -57,6 +124,12 @@ while ($row_eventi = mysqli_fetch_array($result_eventi)) {
     </header>
 
     <main>
+        <!-- Form per il recupero della password -->
+        <form method="post">
+            <input type="hidden" name="email" value=<?php echo $email ?> required>
+            <button type="submit" name="forgot_password">Clicca qui per reimpostare la password</button>
+        </form>
+
         <h1 class="text-center titolo">Ciao <?php echo strtoupper($nome); ?> ecco i tuoi eventi</h1>
         <div class="container">
 
@@ -80,6 +153,19 @@ while ($row_eventi = mysqli_fetch_array($result_eventi)) {
 </script>
 
 <style>
+    .email_status {
+        background-color: white;
+        padding: 1rem;
+    }
+
+    .green {
+        color: green;
+    }
+
+    .red {
+        color: red;
+    }
+
     body {
         margin: 0;
         padding: 0;
