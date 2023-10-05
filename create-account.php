@@ -214,7 +214,7 @@ if (isset($_POST['bottone_registrati'])) {
         background-image: url('./assets/img/background.png');
         background-repeat: no-repeat;
         background-size: cover;
-        background-position: bottom;
+        background-position: top;
         font-family: 'DM Sans', sans-serif;
     }
 
@@ -243,7 +243,7 @@ if (isset($_POST['bottone_registrati'])) {
         background-color: white;
         border-radius: 20px;
         border: 2px solid #2b5486;
-        margin-bottom: 20rem;
+        margin-bottom: 10rem;
     }
 
     form {

@@ -14,6 +14,7 @@ require './PHPMailer/src/SMTP.php';
 // Richiamo le credenziali dal file config.php e credential.php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/credential.php';
+require_once __DIR__ . '/eventController.php';
 
 // Setto messaggio vuoto di default
 $msg = "";
@@ -104,6 +105,44 @@ if (isset($_POST['forgot_password'])) {
         $msg = "<h2 class='email_status red'>L'email fornita non è valida.</h2>";
     }
 }
+
+$eventController = new EventController($connect);
+
+// Logica per gestire gli eventi quando viene inviato il form
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['add_event'])) {
+        // Aggiungi un evento
+        $attendees = $_POST['attendees'];
+        $nome_evento = $_POST['nome_evento'];
+        $data_evento = $_POST['data_evento'];
+        $eventController->aggiungiEvento($attendees, $nome_evento, $data_evento);
+        // Effettua la ricarica della pagina
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    } elseif (isset($_POST['edit_event'])) {
+        // Modifica un evento
+        $indice_evento = $_POST['indice_evento'];
+        $attendees = $_POST['attendees'];
+        $nome_evento = $_POST['nome_evento'];
+        $data_evento = $_POST['data_evento'];
+        $eventController->modificaEvento($indice_evento, $attendees, $nome_evento, $data_evento);
+        // Effettua la ricarica della pagina
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    } elseif (isset($_POST['delete_event'])) {
+        // Elimina un evento
+        $indice_evento = $_POST['indice_evento'];
+        $eventController->eliminaEvento($indice_evento);
+        // Effettua la ricarica della pagina
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    }
+}
+
+$eventi_admin = $eventController->getEventi();
+
+$connect->close();
+
 ?>
 
 
@@ -131,22 +170,43 @@ if (isset($_POST['forgot_password'])) {
         <!-- Stampo messaggio riuscita/errore -->
         <?php echo $msg; ?>
 
-        <!-- Form per il recupero della password -->
-        <form method="post">
-            <input type="hidden" name="email" value=<?php echo $email ?> required>
-            <button type="submit" name="forgot_password">Clicca qui per reimpostare la password</button>
+        <form method='post'>
+            <h2>Aggiungi un evento</h2>
+            <h5><label for="attendees">Partecipanti (e-mail) | Separare gli indirizzi con una virgola seguita da uno spazio (es: mariorossi@gmail.com, lucaverdi@libero.it)</label></h5>
+            <input class="nuovo_evento_style" type='text' name='attendees' placeholder='Partecipanti' required><br>
+            <h5><label for="nome_evento">Nome evento</label></h5>
+            <input class="nuovo_evento_style" type='text' name='nome_evento' placeholder='Nome evento' required><br>
+            <h5><label for="data_evento">Data evento</label></h5>
+            <input class="nuovo_evento_style" type='date' name='data_evento' required><br>
+            <br><br>
+            <button type='submit' name='add_event'>Aggiungi evento</button>
         </form>
 
-        <h1 class="text-center titolo">Ciao <?php echo strtoupper($nome); ?> ecco i tuoi eventi</h1>
         <div class="container">
-
             <?php
-            foreach ($eventi as $evento) {
+            foreach ($eventi_admin as $evento) {
             ?>
-                <div class="card">
-                    <h2 style="line-height: 1; height:60px"><?php echo $evento->nome_evento; ?></h2>
-                    <h4><?php echo $evento->data_evento; ?></h4>
-                    <button>JOIN</button>
+                <div class='card'>
+                    <h3 style='line-height: 1; min-height:90px'>Nome evento:<br><?php echo $evento->nome_evento; ?></h3>
+                    <h4 style="color: black; font-weight:bold;">Partecipanti (e-mail):</h4>
+                    <h4 style="font-size:0.9rem; verflow-y: scroll; height:80px; line-height:1.5;"><?php echo $evento->attendees; ?></h4>
+
+                    <form method='post' style='display:inline;'>
+                        <input type='hidden' name='indice_evento' value=<?php echo $evento->id; ?>>
+                        <h5 class="modifica_label"><label for="attendees">Modifica<br>Partecipanti (e-mail)</label></h5>
+                        <textarea name="attendees" placeholder='Nuovi partecipanti' cols="26" rows="10" required><?php echo htmlspecialchars($evento->attendees); ?></textarea>
+                        <h5 class="modifica_label"><label for="nome_evento">Modifica<br>Nome evento</label></h5>
+                        <input style="width: 95%;" type='text' name='nome_evento' value="<?php echo htmlspecialchars($evento->nome_evento); ?>" placeholder='Nuovo nome evento' required>
+                        <h5 class="modifica_label"><label for="data_evento">Modifica<br>Data evento</label></h5>
+                        <input style="width: 96.3%;" type='date' name='data_evento' value=<?php echo $evento->data_evento; ?>placeholder='Nuova data evento' required>
+                        <br><br><br>
+                        <button type='submit' name='edit_event'>Modifica evento</button>
+                    </form>
+
+                    <form method='post' style='display:inline;'>
+                        <input type='hidden' name='indice_evento' value=<?php echo $evento->id; ?>>
+                        <button type='submit' name='delete_event'>Elimina</button>
+                    </form>
                 </div>
             <?php
             }
@@ -156,23 +216,23 @@ if (isset($_POST['forgot_password'])) {
 </body>
 
 <style>
-    .email_status {
-        background-color: white;
-        padding: 1rem;
+    .modifica_label {
+        line-height: 1;
     }
 
-    .green {
-        color: green;
-    }
-
-    .red {
-        color: red;
+    .nuovo_evento_style {
+        width: 100%;
+        height: 2rem;
+        border-radius: 20px;
+        border: none;
+        padding: 0 10px;
     }
 
     body {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+
         height: 100%;
         background-image: url('./assets/img/background.png');
         background-repeat: no-repeat;
@@ -192,14 +252,6 @@ if (isset($_POST['forgot_password'])) {
     main {
         margin: 3rem auto;
         width: 80%;
-    }
-
-    .text-center {
-        text-align: center;
-    }
-
-    .titolo {
-        color: #134077;
     }
 
     .container {
@@ -226,7 +278,7 @@ if (isset($_POST['forgot_password'])) {
 
     h4 {
         color: gray;
-        opacity: 0.5;
+        opacity: 0.9;
         font-size: 1.2rem;
         font-weight: normal;
     }

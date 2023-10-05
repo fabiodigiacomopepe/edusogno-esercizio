@@ -138,7 +138,7 @@ if (isset($_GET['token'])) {
         background-image: url('./assets/img/background.png');
         background-repeat: no-repeat;
         background-size: cover;
-        background-position: bottom;
+        background-position: top;
         font-family: 'DM Sans', sans-serif;
     }
 
@@ -168,7 +168,7 @@ if (isset($_GET['token'])) {
         background-color: white;
         border-radius: 20px;
         border: 2px solid #2b5486;
-        margin-bottom: 20rem;
+        margin-bottom: 10rem;
     }
 
     form {
