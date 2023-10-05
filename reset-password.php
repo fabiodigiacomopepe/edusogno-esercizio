@@ -3,6 +3,9 @@ session_start();
 
 require_once __DIR__ . '/config.php';
 
+// Setto messaggio vuoto di default
+$msg = "";
+
 // Controllo se il token è stato fornito nell'URL
 if (isset($_GET['token'])) {
     $token = $_GET['token'];
@@ -14,24 +17,32 @@ if (isset($_GET['token'])) {
         if (isset($_POST['reset_password'])) {
             // Ottiengo la nuova password fornita dall'utente
             $new_password = $_POST['new_password'];
+            $confirm_password = $_POST['confirm_password'];
 
-            // Cifro la nuova password
-            $hashed_password = md5($new_password);
+            if ($new_password === $confirm_password) {
 
-            // Aggiorno la password nel database
-            $query = "UPDATE utenti SET password = '$hashed_password', reset_token = NULL WHERE reset_token = '$token'";
-            $connect->query($query);
+                // Cifro la nuova password
+                $hashed_password = md5($new_password);
 
-            // Mostro un messaggio di successo all'utente
-            echo "<h2 class='password_status green'>La tua password è stata reimpostata con successo.</h2>";
+                // Aggiorno la password nel database
+                $query = "UPDATE utenti SET password = '$hashed_password', reset_token = NULL WHERE reset_token = '$token'";
+                $connect->query($query);
+
+                // Mostro un messaggio di successo all'utente
+                $msg = "<h2 class='password_status green'>La tua password è stata reimpostata con successo.<br>
+                Clicca <a href='index.php'>QUI</a> per accedere nuovamente.</h2>";
+            } else {
+                // Le password non corrispondono, mostra un messaggio di errore
+                $msg = "<h2 class='password_status red'>Le password non corrispondono. Riprova.</h2>";
+            }
         }
     } else {
         // Token non valido
-        echo "<h2 class='password_status red'>Il token fornito non è valido.";
+        $msg = "<h2 class='password_status red'>Il token fornito non è valido.<br>Ogni azione è nulla.</h2>";
     }
 } else {
     // Nessun token fornito nell'URL
-    echo "<h2 class='password_status red'>Token non fornito.";
+    $msg = "<h2 class='password_status red'>Token non fornito.<br>Ogni azione è nulla.</h2>";
 }
 ?>
 
@@ -59,6 +70,9 @@ if (isset($_GET['token'])) {
     </header>
 
     <main>
+        <!-- Stampo messaggio riuscita/errore -->
+        <?php echo $msg; ?>
+
         <h1 class="text-center titolo">Reimposta la tua password</h1>
         <div class="container">
 
@@ -68,7 +82,12 @@ if (isset($_GET['token'])) {
                 <div class="password-container">
                     <input type="password" name="new_password" id="user-password" placeholder="Nuova password" required>
                     <i class="fa-solid fa-eye" id="eye"></i>
-                    <span id="password-error" class="invalid-feedback" role="alert"><strong></strong></span>
+                </div>
+
+                <h5><label for="confirm_password">Conferma la nuova password</label></h5>
+                <div class="password-container">
+                    <input type="password" name="confirm_password" id="confirm-password" placeholder="Conferma password" required>
+                    <i class="fa-solid fa-eye" id="eye-confirm"></i>
                 </div>
 
                 <button type="submit" id="reimposta" name="reset_password">Reimposta password</button>
@@ -79,20 +98,27 @@ if (isset($_GET['token'])) {
 
 <script>
     // Funzione per rendere visibile/invisibile password al click su occhio
-    const passwordInput = document.getElementById("user-password")
-    const eye = document.getElementById("eye")
+    const passwordInput = document.getElementById("user-password");
+    const confirmInput = document.getElementById("confirm-password");
+    const eye = document.getElementById("eye");
+    const eye_confirm = document.getElementById("eye-confirm");
 
     eye.addEventListener("click", function() {
-        this.classList.toggle("fa-eye-slash")
-        const type = passwordInput.getAttribute("type") === "password" ? "text" : "password"
-        passwordInput.setAttribute("type", type)
-    })
+        this.classList.toggle("fa-eye-slash");
+        const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+        passwordInput.setAttribute("type", type);
+    });
+
+    eye_confirm.addEventListener("click", function() {
+        this.classList.toggle("fa-eye-slash");
+        const type = confirmInput.getAttribute("type") === "password" ? "text" : "password";
+        confirmInput.setAttribute("type", type);
+    });
 </script>
 
 <style>
     .password_status {
         background-color: white;
-        height: 50px;
         padding: 1rem;
     }
 

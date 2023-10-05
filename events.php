@@ -15,6 +15,9 @@ require './PHPMailer/src/SMTP.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/credential.php';
 
+// Setto messaggio vuoto di default
+$msg = "";
+
 // Verifico se l'utente è loggato
 if (!isset($_SESSION['email'])) {
     header('Location: index.php'); // Reindirizzo alla pagina di login se l'utente non è loggato
@@ -92,13 +95,13 @@ if (isset($_POST['forgot_password'])) {
             $mail->Body = "Ciao, per reimpostare la tua password clicca su questo link: $reset_link"; //Corpo email
 
             $mail->send();
-            echo '<h2 class="email_status green">Una messaggio con le istruzioni per reimpostare la password è stato inviato alla tua email</h2>';
+            $msg = '<h2 class="email_status green">Una messaggio con le istruzioni per reimpostare la password è stato inviato alla tua email</h2>';
         } catch (Exception $e) {
-            echo "<h2 class='email_status red'>Il messaggio non è stato inviato. Errore: {$mail->ErrorInfo}</h2>";
+            $msg = "<h2 class='email_status red'>Il messaggio non è stato inviato. Errore: {$mail->ErrorInfo}</h2>";
         }
     } else {
         // L'email non esiste nel database
-        echo "<h2 class='email_status red'>L'email fornita non è valida.</h2>";
+        $msg = "<h2 class='email_status red'>L'email fornita non è valida.</h2>";
     }
 }
 ?>
@@ -125,6 +128,9 @@ if (isset($_POST['forgot_password'])) {
     </header>
 
     <main>
+        <!-- Stampo messaggio riuscita/errore -->
+        <?php echo $msg; ?>
+
         <!-- Form per il recupero della password -->
         <form method="post">
             <input type="hidden" name="email" value=<?php echo $email ?> required>
