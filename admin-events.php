@@ -211,6 +211,9 @@ $connect->close();
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100;0,9..40,200;0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;0,9..40,1000;1,9..40,100;1,9..40,200;1,9..40,300;1,9..40,400;1,9..40,500;1,9..40,600;1,9..40,700;1,9..40,800;1,9..40,900;1,9..40,1000&display=swap" rel="stylesheet">
+    <!-- Importo font awesome per icona back -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <title>Edusogno</title>
     <title>Edusogno</title>
 </head>
 
@@ -222,6 +225,8 @@ $connect->close();
     <main>
         <!-- Stampo messaggio riuscita/errore -->
         <?php echo $msg; ?>
+
+        <h1><i class="fa-solid fa-left-long"></i><a style="margin-left: 20px;" href='events.php'>Torna indietro</a></h1>
 
         <form method='post'>
             <h2>Aggiungi un evento</h2>
