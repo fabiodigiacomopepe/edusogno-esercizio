@@ -7,7 +7,15 @@ $msg = "";
 
 if (isset($_POST['bottone_registrati'])) {
 
+    $admin = $_POST['admin'];
+
     // Salvo nella variabili ciò che ricevo dal form
+    if ($admin === "true") {
+        $amministratore = true;
+    } elseif ($admin === "false") {
+        $amministratore = 0;
+    }
+
     $nome = $connect->real_escape_string($_POST['name']);
     $cognome = $connect->real_escape_string($_POST['surname']);
     $email = $connect->real_escape_string($_POST['email']);
@@ -22,7 +30,7 @@ if (isset($_POST['bottone_registrati'])) {
                         L'email è già presente nel sistema!
                     </div>";
     } else {  // ALTRIMENTI (Inserisco email nel DB)
-        $sql = "INSERT INTO utenti (nome, cognome, email, password) VALUES ('$nome', '$cognome', '$email', '$password')";
+        $sql = "INSERT INTO utenti (nome, cognome, email, password, admin) VALUES ('$nome', '$cognome', '$email', '$password', '$amministratore')";
 
         if ($connect->query($sql) === true) {
             $msg = "<div class='msg-success'>
@@ -69,6 +77,12 @@ if (isset($_POST['bottone_registrati'])) {
             <?php echo $msg; ?>
 
             <form id="register-form" method="POST">
+                <h5><label for="admin">Sei un amministratore?</label></h5>
+                <div class="radiobox_input">
+                    <input class="input_radio" type="radio" name="admin" value="true"><span style="margin-right: 20px;">Sì</span>
+                    <input class="input_radio" type="radio" name="admin" value="false" checked><span>No</span>
+                </div>
+
                 <h5><label for="name">Inserisci il nome</label></h5>
                 <div><input type="text" name="name" class="form-control @error('name') is-invalid @enderror" id="user-name" placeholder="Mario">
                     <span id="name-error" class="invalid-feedback" role="alert"><strong></strong></span>
@@ -190,6 +204,17 @@ if (isset($_POST['bottone_registrati'])) {
 </script>
 
 <style>
+    .radiobox_input {
+        position: relative;
+        right: 8px;
+    }
+
+    .input_radio {
+        width: 5%;
+        position: relative;
+        top: 5px;
+    }
+
     .msg-success,
     .msg-error {
         padding: 2.5rem 2rem 0 2rem;

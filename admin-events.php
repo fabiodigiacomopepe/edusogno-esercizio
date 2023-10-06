@@ -2,7 +2,7 @@
 // Riapro sessione per ricevere email
 session_start();
 
-// Importo PHPMiler
+// Importo PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
@@ -14,129 +14,182 @@ require './PHPMailer/src/SMTP.php';
 // Richiamo le credenziali dal file config.php e credential.php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/credential.php';
+
+// Richiamo l'eventController
 require_once __DIR__ . '/eventController.php';
 
 // Setto messaggio vuoto di default
 $msg = "";
 
-// Verifico se l'utente è loggato
-if (!isset($_SESSION['email'])) {
-    header('Location: index.php'); // Reindirizzo alla pagina di login se l'utente non è loggato
-    exit();
-}
-
 // Ottengo l'email dell'utente dalla variabile di sessione
 $email = $_SESSION['email'];
 
-// Ottengo il nome e il cognome dell'utente loggato dalla tabella "utenti"
-$sql_user = "SELECT nome, cognome FROM utenti WHERE email = '$email'";
+// Ottengo il valore di admin in booleano
+$sql_user = "SELECT admin FROM utenti WHERE email = '$email'";
 $result_user = mysqli_query($connect, $sql_user);
 $row_user = mysqli_fetch_array($result_user);
-$nome = $row_user['nome'];
-$cognome = $row_user['cognome'];
+$admin = boolval($row_user['admin']);
 
-// Ottengo gli eventi in cui l'utente è presente dalla tabella "eventi"
-$sql_eventi = "SELECT * FROM eventi WHERE attendees LIKE '%$email%'";
-$result_eventi = mysqli_query($connect, $sql_eventi);
-
-// Creo la lista degli eventi in cui l'utente è presente
-$eventi = array();
-while ($row_eventi = mysqli_fetch_array($result_eventi)) {
-    $evento = new stdClass(); // Creo un nuovo oggetto per ogni evento
-    $evento->nome_evento = $row_eventi['nome_evento'];
-    $evento->data_evento = $row_eventi['data_evento'];
-    $eventi[] = $evento; // Aggiungo l'oggetto "evento" all'array "eventi"
-}
-
-// Controllo se l'utente ha fatto clic sul pulsante per reimpostare la password
-if (isset($_POST['forgot_password'])) {
-    // Ottiengo l'email fornita dall'utente
-    $email = $_POST['email'];
-
-    // Verifico se l'email esiste nel database
-    $query = "SELECT * FROM utenti WHERE email = '$email'";
-    $result = $connect->query($query);
-
-    if ($result->num_rows > 0) {
-        // Genero un token univoco per il reset della password
-        $token = bin2hex(random_bytes(32));
-
-        // IMPORTANTE - PER CREARE COLONNA RESET_TOKEN LA PRIMA VOLTA !!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // $alter_query = "ALTER TABLE utenti ADD reset_token VARCHAR(255) DEFAULT NULL";
-        // $connect->query($alter_query);
-
-        // Salvo il token nel database per l'utente
-        $query = "UPDATE utenti SET reset_token = '$token' WHERE email = '$email'";
-        $connect->query($query);
-
-        // Invio un'email all'utente con il link per reimpostare la password
-        $reset_link = "http://localhost/edusogno-esercizio/reset-password.php?token=$token"; // Sostituisci con l'URL corretto
-
-        $mail = new PHPMailer(true); //se true, vengono sollevate eventuali eccezioni utili per il debugging
-
-        try {
-            //Impostazioni server
-            $mail->SMTPDebug = SMTP::DEBUG_OFF; //Debug mode - OFF TOGLIE I LOG A SCHERMO
-            $mail->isSMTP(); //Invio tramite SMTP
-            $mail->Host = 'smtp.gmail.com'; //Server SMTP
-            $mail->SMTPAuth = true; //Abilita autenticazione SMTP
-            $mail->Username = $smtp_mail; //SMTP username
-            $mail->Password = $smtp_password; //SMTP password
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; //Abilita TLS implicito
-            $mail->Port = 587; //Porta SMTP
-
-            //Recipients
-            $mail->setFrom($smtp_mail, $smtp_name);
-            $mail->addAddress($email, $nome); //Indirizzo destinatario
-            $mail->addReplyTo($smtp_mail, $smtp_name); //Indirizzo di risposta
-
-            //Content
-            $mail->isHTML(true); //Abilita invio in HTML
-            $mail->Subject = 'Reimposta password'; //Oggetto
-            $mail->Body = "Ciao, per reimpostare la tua password clicca su questo link: $reset_link"; //Corpo email
-
-            $mail->send();
-            $msg = '<h2 class="email_status green">Una messaggio con le istruzioni per reimpostare la password è stato inviato alla tua email</h2>';
-        } catch (Exception $e) {
-            $msg = "<h2 class='email_status red'>Il messaggio non è stato inviato. Errore: {$mail->ErrorInfo}</h2>";
-        }
-    } else {
-        // L'email non esiste nel database
-        $msg = "<h2 class='email_status red'>L'email fornita non è valida.</h2>";
-    }
+// Verifico se l'utente è un admin
+if ($admin !== true) {
+    header('Location: index.php'); // Reindirizzamento alla pagina di login se l'utente non è un admin
+    exit();
 }
 
 $eventController = new EventController($connect);
 
 // Logica per gestire gli eventi quando viene inviato il form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     if (isset($_POST['add_event'])) {
-        // Aggiungi un evento
+        // Aggiungo un evento
         $attendees = $_POST['attendees'];
         $nome_evento = $_POST['nome_evento'];
         $data_evento = $_POST['data_evento'];
         $eventController->aggiungiEvento($attendees, $nome_evento, $data_evento);
-        // Effettua la ricarica della pagina
+
+        $arrayAttendees = explode(', ', $attendees);
+
+        foreach ($arrayAttendees as $partecipante) {
+            $mail = new PHPMailer(true);
+
+            try {
+                // Impostazioni server
+                $mail->SMTPDebug = SMTP::DEBUG_OFF;
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = $smtp_mail;
+                $mail->Password = $smtp_password;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                // Recipients
+                $mail->setFrom($smtp_mail, $smtp_name);
+                $mail->addAddress($partecipante);
+                $mail->addReplyTo($smtp_mail, $smtp_name);
+
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = 'Sei stato aggiunto a un nuovo evento';
+                $mail->Body = "Ciao, sei stato appena aggiunto all'evento $nome_evento che si svolgera' il $data_evento.";
+
+                $mail->send();
+                $msg = '<h2 class="password_status green">Notifica email inviata correttamente ai partecipanti</h2>';
+            } catch (Exception $e) {
+                $msg = "<h2 class='password_status red'>Il messaggio non è stato inviato. Errore: {$mail->ErrorInfo}</h2>";
+            }
+        }
+
+        $_SESSION['msg'] = $msg; // Salvo il valore di $msg nella sessione
+
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     } elseif (isset($_POST['edit_event'])) {
-        // Modifica un evento
-        $indice_evento = $_POST['indice_evento'];
+        // Modifico un evento
         $attendees = $_POST['attendees'];
         $nome_evento = $_POST['nome_evento'];
         $data_evento = $_POST['data_evento'];
-        $eventController->modificaEvento($indice_evento, $attendees, $nome_evento, $data_evento);
-        // Effettua la ricarica della pagina
+        $indice_evento = $_POST['indice_evento'];
+        $evento_vecchio = $eventController->modificaEvento($attendees, $nome_evento, $data_evento, $indice_evento);
+
+        $nome_vecchio = $evento_vecchio['nome_evento'];
+        $data_vecchia_orario = $evento_vecchio['data_evento'];
+        $data_vecchia = date("Y-m-d", strtotime($data_vecchia_orario));
+
+        $arrayAttendees = explode(', ', $attendees);
+
+        foreach ($arrayAttendees as $partecipante) {
+            $mail = new PHPMailer(true);
+
+            try {
+                // Impostazioni server
+                $mail->SMTPDebug = SMTP::DEBUG_OFF;
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = $smtp_mail;
+                $mail->Password = $smtp_password;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                // Recipients
+                $mail->setFrom($smtp_mail, $smtp_name);
+                $mail->addAddress($partecipante);
+                $mail->addReplyTo($smtp_mail, $smtp_name);
+
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = "Un evento a cui partecipi e' stato modificato";
+                $mail->Body = "Ciao, un evento a cui partecipi e' stato modificato. Nome precedente evento: $nome_vecchio. Data precedente dell'evento: $data_vecchia. Nome nuovo evento: $nome_evento. Data nuova dell'evento: $data_evento.";
+
+                $mail->send();
+                $msg = '<h2 class="password_status green">Notifica email inviata correttamente ai partecipanti</h2>';
+            } catch (Exception $e) {
+                $msg = "<h2 class='password_status red'>Il messaggio non è stato inviato. Errore: {$mail->ErrorInfo}</h2>";
+            }
+        }
+
+        $_SESSION['msg'] = $msg; // Salvo il valore di $msg nella sessione
+
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     } elseif (isset($_POST['delete_event'])) {
-        // Elimina un evento
+        // Elimino un evento
+        $attendees = $_POST['attendees'];
+        $nome_evento = $_POST['nome_evento'];
+        $data_evento = $_POST['data_evento'];
         $indice_evento = $_POST['indice_evento'];
-        $eventController->eliminaEvento($indice_evento);
-        // Effettua la ricarica della pagina
+        $evento_vecchio = $eventController->eliminaEvento($indice_evento);
+
+        $nome_vecchio = $evento_vecchio['nome_evento'];
+        $data_vecchia_orario = $evento_vecchio['data_evento'];
+        $data_vecchia = date("Y-m-d", strtotime($data_vecchia_orario));
+
+        $arrayAttendees = explode(', ', $attendees);
+
+        foreach ($arrayAttendees as $partecipante) {
+            $mail = new PHPMailer(true);
+
+            try {
+                // Impostazioni server
+                $mail->SMTPDebug = SMTP::DEBUG_OFF;
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = $smtp_mail;
+                $mail->Password = $smtp_password;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                // Recipients
+                $mail->setFrom($smtp_mail, $smtp_name);
+                $mail->addAddress($partecipante);
+                $mail->addReplyTo($smtp_mail, $smtp_name);
+
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = "Un evento a cui partecipi e' stato eliminato";
+                $mail->Body = "Ciao, un evento a cui partecipi e' stato eliminato. Nome evento eleminato: $nome_vecchio. Data evento eliminato: $data_vecchia.";
+
+                $mail->send();
+                $msg = '<h2 class="password_status green">Notifica email inviata correttamente ai partecipanti</h2>';
+            } catch (Exception $e) {
+                $msg = "<h2 class='password_status red'>Il messaggio non è stato inviato. Errore: {$mail->ErrorInfo}</h2>";
+            }
+        }
+
+        $_SESSION['msg'] = $msg; // Salvo il valore di $msg nella sessione
+
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     }
+}
+
+// Dopo il reindirizzamento, per accedere al valore di $msg dalla sessione
+if (isset($_SESSION['msg'])) {
+    $msg = $_SESSION['msg'];
+    unset($_SESSION['msg']); // Rimuovo il valore di $msg dalla sessione
 }
 
 $eventi_admin = $eventController->getEventi();
@@ -187,24 +240,30 @@ $connect->close();
             foreach ($eventi_admin as $evento) {
             ?>
                 <div class='card'>
-                    <h3 style='line-height: 1; min-height:90px'>Nome evento:<br><?php echo $evento->nome_evento; ?></h3>
+                    <h3>Nome evento: <?php echo $evento->nome_evento; ?></h3>
                     <h4 style="color: black; font-weight:bold;">Partecipanti (e-mail):</h4>
-                    <h4 style="font-size:0.9rem; verflow-y: scroll; height:80px; line-height:1.5;"><?php echo $evento->attendees; ?></h4>
+                    <h4 style="font-size:0.9rem;"><?php echo $evento->attendees; ?></h4>
+                    <h4 style="color: black; font-weight:bold;">Data evento:</h4>
+                    <h4 style="font-size:0.9rem;"><?php echo $evento->data_evento; ?></h4>
+                    <br>
 
                     <form method='post' style='display:inline;'>
+                        <h3>MODIFICA</h3>
                         <input type='hidden' name='indice_evento' value=<?php echo $evento->id; ?>>
-                        <h5 class="modifica_label"><label for="attendees">Modifica<br>Partecipanti (e-mail)</label></h5>
-                        <textarea name="attendees" placeholder='Nuovi partecipanti' cols="26" rows="10" required><?php echo htmlspecialchars($evento->attendees); ?></textarea>
-                        <h5 class="modifica_label"><label for="nome_evento">Modifica<br>Nome evento</label></h5>
-                        <input style="width: 95%;" type='text' name='nome_evento' value="<?php echo htmlspecialchars($evento->nome_evento); ?>" placeholder='Nuovo nome evento' required>
-                        <h5 class="modifica_label"><label for="data_evento">Modifica<br>Data evento</label></h5>
-                        <input style="width: 96.3%;" type='date' name='data_evento' value=<?php echo $evento->data_evento; ?>placeholder='Nuova data evento' required>
-                        <br><br><br>
-                        <button type='submit' name='edit_event'>Modifica evento</button>
+                        <h5 class="modifica_label"><label for="nome_evento">Nome evento</label></h5>
+                        <input style="width: 98%;" type='text' name='nome_evento' value="<?php echo htmlspecialchars($evento->nome_evento); ?>" placeholder='Nuovo nome evento' required>
+                        <h5 class="modifica_label"><label for="attendees">Partecipanti (e-mail) | Separare gli indirizzi con una virgola seguita da uno spazio<br>(es: mariorossi@gmail.com, lucaverdi@libero.it)</label></h5>
+                        <textarea name="attendees" placeholder='Nuovi partecipanti' cols="118" rows="7" required><?php echo htmlspecialchars($evento->attendees); ?></textarea>
+                        <h5 class="modifica_label"><label for="data_evento">Data evento</label></h5>
+                        <input style="width: 98%;" type='date' name='data_evento' value=<?php echo $evento->data_evento; ?>placeholder='Nuova data evento' required>
+                        <button style="margin-top: 50px;" type='submit' name='edit_event'>Modifica evento</button>
                     </form>
 
                     <form method='post' style='display:inline;'>
                         <input type='hidden' name='indice_evento' value=<?php echo $evento->id; ?>>
+                        <input type='hidden' name='nome_evento' value="<?php echo htmlspecialchars($evento->nome_evento); ?>" required>
+                        <input type="hidden" name="attendees" cols="118" rows="7" value="<?php echo htmlspecialchars($evento->attendees); ?>" required>
+                        <input type='hidden' name='data_evento' value=<?php echo $evento->data_evento; ?>placeholder='Nuova data evento' required>
                         <button type='submit' name='delete_event'>Elimina</button>
                     </form>
                 </div>
@@ -216,6 +275,19 @@ $connect->close();
 </body>
 
 <style>
+    .password_status {
+        background-color: white;
+        padding: 1rem;
+    }
+
+    .green {
+        color: green;
+    }
+
+    .red {
+        color: red;
+    }
+
     .modifica_label {
         line-height: 1;
     }
@@ -265,7 +337,7 @@ $connect->close();
     }
 
     .card {
-        width: 22%;
+        width: 100%;
         background-color: white;
         border: 2px solid #2b5486;
         border-radius: 20px;
@@ -273,7 +345,6 @@ $connect->close();
         font-size: 1.5rem;
         line-height: 0.5;
         margin-bottom: 2rem;
-        min-height: 240px;
     }
 
     h4 {

@@ -25,6 +25,7 @@ cognome varchar(45),
 email varchar(255),
 password varchar(255),
 reset_token varchar(255),
+admin boolean DEFAULT false,
 PRIMARY KEY (id)
 );
 

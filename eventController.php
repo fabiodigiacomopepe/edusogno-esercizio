@@ -32,44 +32,60 @@ class EventController
 
     public function aggiungiEvento($attendees, $nome_evento, $data_evento)
     {
-        // Prepara la query di inserimento
+        // Preparo la query di inserimento
         $stmt = $this->connect->prepare("INSERT INTO eventi (attendees, nome_evento, data_evento) VALUES (?, ?, ?)");
         $stmt->bind_param("sss", $attendees, $nome_evento, $data_evento);
         $stmt->execute();
     }
 
-    public function modificaEvento($id, $attendees, $nome_evento, $data_evento)
+    public function modificaEvento($attendees, $nome_evento, $data_evento, $id)
     {
-        // Prepara la query di aggiornamento
-        $stmt = $this->connect->prepare("UPDATE eventi SET attendees=?, nome_evento=?, data_evento=? WHERE id=?");
-        $stmt->bind_param("sssi", $attendees, $nome_evento, $data_evento, $id);
+        $stmt = $this->connect->prepare("SELECT * FROM eventi WHERE id=?");
+        $stmt->bind_param("i", $id);
         $stmt->execute();
+        $result = $stmt->get_result();
+        $evento = $result->fetch_assoc();
+
+        // Preparo la query di aggiornamento
+        $stmt2 = $this->connect->prepare("UPDATE eventi SET attendees=?, nome_evento=?, data_evento=? WHERE id=?");
+        $stmt2->bind_param("sssi", $attendees, $nome_evento, $data_evento, $id);
+        $stmt2->execute();
+
+        return $evento;
     }
 
     public function eliminaEvento($id)
     {
-        // Prepara la query di eliminazione
-        $stmt = $this->connect->prepare("DELETE FROM eventi WHERE id=?");
+        $stmt = $this->connect->prepare("SELECT * FROM eventi WHERE id=?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
+        $result = $stmt->get_result();
+        $evento = $result->fetch_assoc();
+
+        // Preparo la query di eliminazione
+        $stmt2 = $this->connect->prepare("DELETE FROM eventi WHERE id=?");
+        $stmt2->bind_param("i", $id);
+        $stmt2->execute();
+
+        return $evento;
     }
 
     public function getEventi()
     {
-        // Esegui la query per ottenere gli eventi dal database
+        // Eseguo la query per ottenere gli eventi dal database
         $result = $this->connect->query("SELECT * FROM eventi");
 
-        // Crea un array per gli eventi
+        // Creo un array per gli eventi
         $eventi_admin = array();
 
-        // Itera sui risultati della query
+        // Itero sui risultati della query
         while ($row = $result->fetch_assoc()) {
-            // Crea un oggetto Event per ogni riga e aggiungilo all'array degli eventi
+            // Creo un oggetto Event per ogni riga e lo aggiungo all'array degli eventi
             $evento = new Event($row['attendees'], $row['nome_evento'], $row['data_evento'], $row['id']);
             $eventi_admin[] = $evento;
         }
 
-        // Restituisci l'elenco degli eventi
+        // Restituisco l'elenco degli eventi
         return $eventi_admin;
     }
 }

@@ -19,6 +19,7 @@ if (isset($_GET['token'])) {
             $new_password = $_POST['new_password'];
             $confirm_password = $_POST['confirm_password'];
 
+            // Se password coincidono
             if ($new_password === $confirm_password) {
 
                 // Cifro la nuova password
@@ -31,7 +32,7 @@ if (isset($_GET['token'])) {
                 // Mostro un messaggio di successo all'utente
                 $msg = "<h2 class='password_status green'>La tua password è stata reimpostata con successo.<br>
                 Clicca <a href='index.php'>QUI</a> per accedere nuovamente.</h2>";
-            } else {
+            } else {  // ALTRIMENTI
                 // Le password non corrispondono, mostra un messaggio di errore
                 $msg = "<h2 class='password_status red'>Le password non corrispondono. Riprova.</h2>";
             }

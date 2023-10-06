@@ -2,7 +2,7 @@
 // Riapro sessione per ricevere email
 session_start();
 
-// Importo PHPMiler
+// Importo PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
@@ -49,7 +49,7 @@ while ($row_eventi = mysqli_fetch_array($result_eventi)) {
 
 // Controllo se l'utente ha fatto clic sul pulsante per reimpostare la password
 if (isset($_POST['forgot_password'])) {
-    // Ottiengo l'email fornita dall'utente
+    // Ottengo l'email fornita dall'utente
     $email = $_POST['email'];
 
     // Verifico se l'email esiste nel database
@@ -130,6 +130,8 @@ if (isset($_POST['forgot_password'])) {
     <main>
         <!-- Stampo messaggio riuscita/errore -->
         <?php echo $msg; ?>
+
+        <h2 style="text-align: center;">Sei un amministratore? <a href='admin-events.php'>Clicca qui</a></h2>
 
         <!-- Form per il recupero della password -->
         <form method="post">
